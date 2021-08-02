@@ -1,9 +1,9 @@
-const functions = require("firebase-functions");
+const loadFunctions = require('firebase-function-tools');
+const admin = require('firebase-admin');
+// `const functions = require('firebase-functions');
+// const config = functions.config();
 
-// // Create and Deploy Your First Cloud Functions
-// // https://firebase.google.com/docs/functions/write-firebase-functions
-//
-// exports.helloWorld = functions.https.onRequest((request, response) => {
-//   functions.logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+admin.initializeApp();
+
+loadFunctions(__dirname, exports);
+console.log('GLF: Cloud Functions LOADED');
