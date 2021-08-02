@@ -6,7 +6,7 @@ const runtimeOpts = {
   timeoutSeconds: 300,
 };
 
-const BATCH_SIZE = 100;
+// const BATCH_SIZE = 100;
 const COLLECTION_NAME = 'traditional';
 // const COUNTERS_PATH = 'counters';
 // const COUNTER_NAME = 'tradCount';
@@ -16,6 +16,7 @@ const COLLECTION_NAME = 'traditional';
 const DOCUMENT_DATA_PROPERTY = 'data';
 const DOCUMENT_LOOP_INDEX_PROPERTY = 'loopIndex';
 const DOCUMENT_BATCH_DATE_PROPERTY = 'batchDate';
+const REQ_BODY_BATCHSIZE = 'batchSize';
 
 const randomString = (len = 1) => {
   const charSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ';
@@ -46,13 +47,23 @@ export default functions
   .https.onRequest(async (req, res) => {
     const startTime = new Date();
     const fsStartTimestamp = admin.firestore.Timestamp.fromDate(startTime);
+
+    const batchParam = Number(req.body[REQ_BODY_BATCHSIZE]);
+
+    if (!batchParam || batchParam <= 0) {
+      const err = `Invalid batch param value: (${req.body.batchSize})`;
+      console.error(err);
+      res.status(400).send(err);
+    }
+    console.log(`batch size: (${batchParam})`);
+
     const msg = {};
     const fsDB = admin.firestore();
 
     try {
       console.log('START');
 
-      for (let i = 0; i < BATCH_SIZE; i++) {
+      for (let i = 0; i < batchParam; i++) {
         createDoc(fsDB, i, fsStartTimestamp);
       }
 

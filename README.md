@@ -40,12 +40,12 @@ With the distributed documents, we will see significantly less failures.  By adj
 
 1. start the emulator with `firestore emulators:start --only functions,firestore`
 1. cause the system to load a batch of `traditional` docs:
-   `wget -Sv -Ooutput.txt http://localhost:5001/example-fs-distributed-counter/us-central1/httpBatchCreateTraditional`
+   `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" http://localhost:5001/example-fs-distributed-counter/us-central1/httpBatchCreateTraditional`
 
 ## Running in your cloud-based Firebase project
 
 1. deploy to your cloud project with `firestore deploy --only functions,firestore`
 1. enable unauthenticated access to `httpBatchCreateTraditional` by following [these After Deployment instructions](https://cloud.google.com/functions/docs/securing/managing-access-iam#after_deployment)
 1. cause the system to load a batch of `traditional` docs (you can get the URL for the HTTP function from Firebase Console >> Functions):
-   `wget -Sv -Ooutput.txt https://YOUR_FIREBASE_PROJECT/example-fs-distributed-counter/us-central1/httpBatchCreateTraditional`
+   `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" https://YOUR_FIREBASE_PROJECT/example-fs-distributed-counter/us-central1/httpBatchCreateTraditional`
 
