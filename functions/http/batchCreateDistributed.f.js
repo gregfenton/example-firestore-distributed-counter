@@ -12,7 +12,7 @@ export default functions
   .runWith(runtimeOpts)
   .https.onRequest(async (req, res) => {
     CONSTS.createBatchOfDocs(
-      CONSTS.TRADITIONAL_COLLECTION_NAME,
+      CONSTS.DISTRIBUTED_COLLECTION_NAME,
       req,
       res,
       admin
