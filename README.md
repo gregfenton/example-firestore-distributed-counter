@@ -48,3 +48,8 @@ With the distributed documents, we will see significantly less failures.  By adj
 1. enable unauthenticated access to `httpBatchCreateTraditional` by following [these After Deployment instructions](https://cloud.google.com/functions/docs/securing/managing-access-iam#after_deployment)
 1. cause the system to load a batch of `traditional` docs (you can get the URL for the HTTP function from Firebase Console >> Functions):
    `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" https://YOUR_FIREBASE_PROJECT.cloudfunctions.net/httpBatchCreateTraditional`
+
+
+## To debug the Firebase Emulator
+
+Instructions are [here](https://medium.com/firebase-developers/debugging-firebase-functions-in-vs-code-a1caf22db0b2).  Essentially it is a matter of configuring the `launch.json`, running the emulator with the `--inspect-functions` command line parameter, then running the debugger in VSCode.

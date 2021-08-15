@@ -1,0 +1,10 @@
+{
+  "configurations": [
+    {
+      "type": "node",
+      "name": "Local Firebase Emulator",
+      "request": "attach",
+      "port": 9229
+    }
+  ]
+}
