@@ -1,13 +1,10 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
+const CONSTS = require('../../constants');
+
 const db = admin.firestore();
 const logger = functions.logger;
-
-const COLLECTION_NAME = 'distributed';
-const COUNTERS_PATH = 'counters';
-const COUNTER_NAME = 'distCount';
-const SHARDS_COLLECTION_NAME = 'shards';
 
 const createCounter = (ref, numShards) => {
   const batch = db.batch();
@@ -18,9 +15,9 @@ const createCounter = (ref, numShards) => {
   // Initialize each shard with count=0
   for (let i = 0; i < numShards; i++) {
     const shardRef = db
-      .collection(COUNTERS_PATH)
-      .doc(COLLECTION_NAME)
-      .collection(SHARDS_COLLECTION_NAME)
+      .collection(CONSTS.COUNTERS_PATH)
+      .doc(CONSTS.DISTRIBUTED_COLLECTION_NAME)
+      .collection(CONSTS.DISTRIBUTED_SHARDS_COLLECTION_NAME)
       .doc(i.toString());
     batch.set(shardRef, { count: 0 });
   }
@@ -32,7 +29,9 @@ const createCounter = (ref, numShards) => {
 const incrementCounter = (transaction, ref, numShards) => {
   // Select a shard of the counter at random
   const shardId = Math.floor(Math.random() * numShards).toString();
-  const shardRef = ref.collection(SHARDS_COLLECTION_NAME).doc(shardId); // ref
+  const shardRef = ref
+    .collection(CONSTS.DISTRIBUTED_SHARDS_COLLECTION_NAME)
+    .doc(shardId); // ref
 
   // Update count
   transaction.update(shardRef, {
@@ -42,7 +41,7 @@ const incrementCounter = (transaction, ref, numShards) => {
 
 const getCount = (transaction, ref) => {
   // Sum the count of each shard in the subcollection
-  const shardsRef = ref.collection(SHARDS_COLLECTION_NAME);
+  const shardsRef = ref.collection(CONSTS.DISTRIBUTED_SHARDS_COLLECTION_NAME);
   return transaction.get(shardsRef).then((snapshot) => {
     let totalCount = 0;
     snapshot.forEach((doc) => {
@@ -55,35 +54,53 @@ const getCount = (transaction, ref) => {
 
 // Cloud Function to increment the document field after creation.
 export default functions.firestore
-  .document(`${COLLECTION_NAME}/{docId}`)
+  .document(`${CONSTS.DISTRIBUTED_COLLECTION_NAME}/{docId}`)
   .onCreate((snap, context) => {
-    // Run inside a transaction
-    return db.runTransaction(async (transaction) => {
-      // Get the metadata document and increment the count.
+    let number;
+    let metaData;
+    const origDocRef = snap.ref;
 
-      const newCounterRef = db.collection(COUNTERS_PATH).doc(COUNTER_NAME);
-      // const metaRef = db.collection(path);
-      const metaData = await transaction.get(newCounterRef);
-      let number;
+    try {
+      // Run inside a transaction
+      const trans = db.runTransaction(async (transaction) => {
+        // Get the metadata document and increment the count.
 
-      if (metaData && metaData.exists) {
-        const count = await getCount(transaction, newCounterRef);
-        number = count + 1;
-        incrementCounter(transaction, newCounterRef, 1);
-      } else {
-        logger.warn(
-          'actCounter metadata not found: ' +
-            `(${COUNTERS_PATH}) -- CREATING IT NOW`
-        );
-        number = 1;
-        createCounter(newCounterRef, 1);
-      }
+        const newCounterRef = db
+          .collection(CONSTS.COUNTERS_PATH)
+          .doc(CONSTS.DISTRIBUTED_COUNTER_NAME);
+        // const metaRef = db.collection(path);
+        metaData = await transaction.get(newCounterRef);
 
-      // Update the act document
-      const actRef = snap.ref;
+        if (metaData && metaData.exists) {
+          const count = await getCount(transaction, newCounterRef);
+          number = count + 1;
+          incrementCounter(transaction, newCounterRef, 1);
+        } else {
+          logger.warn(
+            'actCounter metadata not found: ' +
+              `(${CONSTS.COUNTERS_PATH}) -- CREATING IT NOW`
+          );
+          number = 1;
+          createCounter(newCounterRef, 1);
+        }
 
-      transaction.update(actRef, {
-        actNumber: number,
+        transaction.update(origDocRef, {
+          actNumber: number,
+        });
       });
-    });
+
+      return trans;
+    } catch (ex) {
+      origDocRef.get().then((doc) => {
+        if (doc.exists) {
+          logger.error(
+            `ON CREATE DISTRIBUTED: failed to update {data: (${doc.data})}\n\n`,
+            ex
+          );
+        } else {
+          logger.error('ON CREATE DISTRIBUTED: doc does not exist!\n\n', ex);
+        }
+      });
+      return null;
+    }
   });
