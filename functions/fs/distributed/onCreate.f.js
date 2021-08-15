@@ -16,7 +16,7 @@ const createCounter = (ref, numShards) => {
   for (let i = 0; i < numShards; i++) {
     const shardRef = db
       .collection(CONSTS.COUNTERS_PATH)
-      .doc(CONSTS.DISTRIBUTED_COLLECTION_NAME)
+      .doc(CONSTS.DISTRIBUTED_COUNTER_NAME)
       .collection(CONSTS.DISTRIBUTED_SHARDS_COLLECTION_NAME)
       .doc(i.toString());
     batch.set(shardRef, { count: 0 });
@@ -33,6 +33,7 @@ const incrementCounter = (transaction, ref, numShards) => {
     .collection(CONSTS.DISTRIBUTED_SHARDS_COLLECTION_NAME)
     .doc(shardId); // ref
 
+  console.log(`UPDATING shard#(${shardId})`);
   // Update count
   transaction.update(shardRef, {
     count: admin.firestore.FieldValue.increment(1),
@@ -42,6 +43,7 @@ const incrementCounter = (transaction, ref, numShards) => {
 const getCount = (transaction, ref) => {
   // Sum the count of each shard in the subcollection
   const shardsRef = ref.collection(CONSTS.DISTRIBUTED_SHARDS_COLLECTION_NAME);
+  console.log(`getCount(): shardsRef path is: (${shardsRef.path})`);
   return transaction.get(shardsRef).then((snapshot) => {
     let totalCount = 0;
     snapshot.forEach((doc) => {
@@ -60,11 +62,12 @@ export default functions.firestore
     let metaData;
     const origDocRef = snap.ref;
 
+    console.log(`DIST: docId(${origDocRef.id})`);
+
     try {
       // Run inside a transaction
       const trans = db.runTransaction(async (transaction) => {
         // Get the metadata document and increment the count.
-
         const newCounterRef = db
           .collection(CONSTS.COUNTERS_PATH)
           .doc(CONSTS.DISTRIBUTED_COUNTER_NAME);
@@ -74,14 +77,18 @@ export default functions.firestore
         if (metaData && metaData.exists) {
           const count = await getCount(transaction, newCounterRef);
           number = count + 1;
-          incrementCounter(transaction, newCounterRef, 1);
+          incrementCounter(
+            transaction,
+            newCounterRef,
+            CONSTS.DISTRIBUTED_NUMBER_OF_SHARDS
+          );
         } else {
           logger.warn(
             'actCounter metadata not found: ' +
               `(${CONSTS.COUNTERS_PATH}) -- CREATING IT NOW`
           );
           number = 1;
-          createCounter(newCounterRef, 1);
+          createCounter(newCounterRef, CONSTS.DISTRIBUTED_NUMBER_OF_SHARDS);
         }
 
         transaction.update(origDocRef, {
