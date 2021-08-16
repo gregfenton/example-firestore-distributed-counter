@@ -1,13 +1,16 @@
 export const COUNTERS_PATH = 'counters';
 
 export const DISTRIBUTED_COLLECTION_NAME = 'distributed';
+export const DISTRIBUTED_COUNTER_COUNT_PROPERTY = 'count';
 export const DISTRIBUTED_COUNTER_NAME = 'distCount';
+export const DISTRIBUTED_COUNT_INCREASE = 1;
 export const DISTRIBUTED_NUMBER_OF_SHARDS = 10;
 export const DISTRIBUTED_SHARDS_COLLECTION_NAME = 'shards';
 
 export const DOCUMENT_BATCH_DATE_PROPERTY = 'batchDate';
 export const DOCUMENT_DATA_PROPERTY = 'data';
 export const DOCUMENT_LOOP_INDEX_PROPERTY = 'loopIndex';
+export const DOCUMENT_DOC_NUMBER_SET_PROPERTY = 'docNumberSet';
 export const DOCUMENT_NUM_PROPERTY = 'docNumber';
 
 export const REQ_BODY_BATCHSIZE = 'batchSize';
@@ -50,6 +53,8 @@ export const createDoc = async (
     [DOCUMENT_DATA_PROPERTY]: d,
     [DOCUMENT_LOOP_INDEX_PROPERTY]: loopNum,
     [DOCUMENT_BATCH_DATE_PROPERTY]: startTimeMillis,
+    // enables us to find docs without a docNumber set
+    [DOCUMENT_DOC_NUMBER_SET_PROPERTY]: false
   });
 };
 
