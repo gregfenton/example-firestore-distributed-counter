@@ -108,6 +108,10 @@ const callWithRetry = async (fn, snap, retryCount = 0) => {
     console.log(`callWithRetry(): EXCEPTION: ${e.message}`);
 
     if (retryCount > MAX_RETRIES) {
+      console.error(
+        `MAX_RETRIES (${retryCount} > ${MAX_RETRIES}) ` +
+          `exceeded!: ${e.message}`
+      );
       throw e;
     }
 
