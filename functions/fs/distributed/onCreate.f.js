@@ -6,6 +6,8 @@ const CONSTS = require('../../constants');
 const db = admin.firestore();
 const logger = functions.logger;
 
+const MAX_RETRIES = 4;
+
 const createCounter = (ref, numShards) => {
   const batch = db.batch();
 
@@ -36,7 +38,8 @@ const incrementCounter = (transaction, ref, numShards) => {
   console.log(`UPDATING shard#(${shardId})`);
   // Update count
   transaction.update(shardRef, {
-    count: admin.firestore.FieldValue.increment(1),
+    [CONSTS.DISTRIBUTED_COUNTER_COUNT_PROPERTY]:
+      admin.firestore.FieldValue.increment(CONSTS.DISTRIBUTED_COUNT_INCREASE),
   });
 };
 
@@ -50,64 +53,84 @@ const getCount = (transaction, ref) => {
       totalCount += doc.data().count;
     });
 
-    return totalCount;
+    return totalCount + CONSTS.DISTRIBUTED_COUNT_INCREASE;
   });
 };
 
-// Cloud Function to increment the document field after creation.
-export default functions.firestore
-  .document(`${CONSTS.DISTRIBUTED_COLLECTION_NAME}/{docId}`)
-  .onCreate((snap, context) => {
-    let number;
-    let metaData;
+export const ensureCounterExists = () => {
+  const counterRef = db
+    .collection(CONSTS.COUNTERS_PATH)
+    .doc(CONSTS.DISTRIBUTED_COUNTER_NAME);
+  return counterRef.get().then((docSnap) => {
+    if (!docSnap.exists) {
+      logger.warn(
+        `${CONSTS.DISTRIBUTED_COUNTER_NAME} metadata not found: ` +
+          `(${CONSTS.COUNTERS_PATH}) -- CREATING IT NOW`
+      );
+      createCounter(counterRef, CONSTS.DISTRIBUTED_NUMBER_OF_SHARDS);
+    }
+  });
+};
+
+const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+
+const tryFsTransaction = async (snap, retryCount) => {
+  return db.runTransaction(async (transaction) => {
     const origDocRef = snap.ref;
 
-    console.log(`DIST: docId(${origDocRef.id})`);
+    console.log(`docId(${origDocRef.id}) -- start RETRY_COUNT#(${retryCount})`);
+    // Get the metadata document and increment the count.
+    const newCounterRef = db
+      .collection(CONSTS.COUNTERS_PATH)
+      .doc(CONSTS.DISTRIBUTED_COUNTER_NAME);
+    // const metaRef = db.collection(path);
+    const number = await getCount(transaction, newCounterRef);
+    incrementCounter(
+      transaction,
+      newCounterRef,
+      CONSTS.DISTRIBUTED_NUMBER_OF_SHARDS
+    );
 
-    try {
-      // Run inside a transaction
-      const trans = db.runTransaction(async (transaction) => {
-        // Get the metadata document and increment the count.
-        const newCounterRef = db
-          .collection(CONSTS.COUNTERS_PATH)
-          .doc(CONSTS.DISTRIBUTED_COUNTER_NAME);
-        // const metaRef = db.collection(path);
-        metaData = await transaction.get(newCounterRef);
+    transaction.update(origDocRef, {
+      [CONSTS.DOCUMENT_NUM_PROPERTY]: number,
+      [CONSTS.DOCUMENT_DOC_NUMBER_SET_PROPERTY]: true,
+    });
 
-        if (metaData && metaData.exists) {
-          const count = await getCount(transaction, newCounterRef);
-          number = count + 1;
-          incrementCounter(
-            transaction,
-            newCounterRef,
-            CONSTS.DISTRIBUTED_NUMBER_OF_SHARDS
-          );
-        } else {
-          logger.warn(
-            'actCounter metadata not found: ' +
-              `(${CONSTS.COUNTERS_PATH}) -- CREATING IT NOW`
-          );
-          number = 1;
-          createCounter(newCounterRef, CONSTS.DISTRIBUTED_NUMBER_OF_SHARDS);
-        }
+    console.log(`SUCCESS! docId(${origDocRef.id}) -- number: ${number}`);
+    return number;
+  });
+};
 
-        transaction.update(origDocRef, {
-          actNumber: number,
-        });
-      });
+const callWithRetry = async (fn, snap, retryCount = 0) => {
+  try {
+    return await fn(snap, retryCount);
+  } catch (e) {
+    console.log(`callWithRetry(): EXCEPTION: ${e.message}`);
 
-      return trans;
-    } catch (ex) {
-      origDocRef.get().then((doc) => {
-        if (doc.exists) {
-          logger.error(
-            `ON CREATE DISTRIBUTED: failed to update {data: (${doc.data})}\n\n`,
-            ex
-          );
-        } else {
-          logger.error('ON CREATE DISTRIBUTED: doc does not exist!\n\n', ex);
-        }
-      });
-      return null;
+    if (retryCount > MAX_RETRIES) {
+      throw e;
     }
+
+    // random 1000 to 2000 value
+    const waitTime = 2 ** retryCount * Math.floor(Math.random() * 1000) + 1000;
+
+    // max wait it (2 ^ MAX_RETRIES) * 2000 = 2 ^ 4 * 2000 ms = 32s
+    await wait(waitTime); // exponential backoff
+
+    console.log(
+      `callWithRetry(): about to retry for ${snap.id} ` +
+        `-- retryCount (${retryCount}) -- waitTime(${waitTime})`
+    );
+    return callWithRetry(fn, snap, retryCount + 1);
+  }
+};
+
+// Cloud Function to increment the document field after creation.
+export default functions
+  .runWith({ timeoutSeconds: 300 })
+  .firestore.document(`${CONSTS.DISTRIBUTED_COLLECTION_NAME}/{docId}`)
+  .onCreate((snap, context) => {
+    return ensureCounterExists().then(() => {
+      return callWithRetry(tryFsTransaction, snap);
+    });
   });
