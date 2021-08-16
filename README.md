@@ -80,6 +80,10 @@ in the configuration, you can get dramatic throughput for concurrency and avoid 
 1. start the emulator with `firebase emulators:start --only functions,firestore`
 1. cause the system to load a batch of `traditional` docs:
    `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" http://localhost:5001/example-fs-distributed-counter/us-central1/httpBatchCreateTraditional`
+1. Re-run the above URL changing the `batchSize` parameter.
+1. cause the system to load a batch of `distributed` docs:
+   `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" http://localhost:5001/example-fs-distributed-counter/us-central1/httpBatchCreateDistributed`
+1. Re-run the above URL changing the `batchSize` parameter.
 
 ## To debug the Firebase Emulator
 
@@ -93,6 +97,10 @@ line parameter, then running the debugger in VSCode.
 1. enable unauthenticated access to `httpBatchCreateTraditional` by following [these After Deployment instructions](https://cloud.google.com/functions/docs/securing/managing-access-iam#after_deployment)
 1. cause the system to load a batch of `traditional` docs (you can get the URL for the HTTP function from Firebase Console >> Functions):
    `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" https://YOUR_FIREBASE_PROJECT.cloudfunctions.net/httpBatchCreateTraditional`
+1. Re-run the above URL changing the `batchSize` parameter.
+1. cause the system to load a batch of `distributed` docs:
+   `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" http://YOUR_FIREBASE_PROJECT.cloudfunctions.net/httpBatchCreateDistributed`
+1. Re-run the above URL changing the `batchSize` parameter.
 
 # To reset the system
 
