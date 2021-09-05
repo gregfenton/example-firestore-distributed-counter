@@ -6,8 +6,6 @@ const CONSTS = require('../../constants');
 const db = admin.firestore();
 const logger = functions.logger;
 
-const MAX_RETRIES = 4;
-
 const createCounter = (ref, numShards) => {
   const batch = db.batch();
 
@@ -96,34 +94,37 @@ const tryFsTransaction = async (snap, retryCount) => {
       [CONSTS.DOCUMENT_DOC_NUMBER_SET_PROPERTY]: true,
     });
 
-    console.log(`SUCCESS! docId(${origDocRef.id}) -- number: ${number}`);
     return number;
   });
 };
 
 const callWithRetry = async (fn, snap, retryCount = 0) => {
   try {
-    return await fn(snap, retryCount);
+    const docNumber = await fn(snap, retryCount);
+    console.log(
+      `callWithRetry(): SUCCESS! docId(${snap.id}) -- number: ${docNumber}`
+    );
+    return docNumber;
   } catch (e) {
     console.log(`callWithRetry(): EXCEPTION: ${e.message}`);
 
-    if (retryCount > MAX_RETRIES) {
+    if (retryCount > CONSTS.DISTRIBUTED_MAX_RETRIES) {
       console.error(
-        `MAX_RETRIES (${retryCount} > ${MAX_RETRIES}) ` +
-          `exceeded!: ${e.message}`
+        'callWithRetry(): MAX_RETRIES ' +
+          `(${retryCount} > ${CONSTS.DISTRIBUTED_MAX_RETRIES}) ` +
+          `EXCEEDED!!: ${e.message}`
       );
       throw e;
     }
 
-    // random 1000 to 2000 value
-    const waitTime = 2 ** retryCount * Math.floor(Math.random() * 1000) + 1000;
+    // random 3000 to 8000 value
+    const waitTimeMillis = 3000 + Math.floor(Math.random() * 5000);
 
-    // max wait it (2 ^ MAX_RETRIES) * 2000 = 2 ^ 4 * 2000 ms = 32s
-    await wait(waitTime); // exponential backoff
+    await wait(waitTimeMillis);
 
     console.log(
-      `callWithRetry(): about to retry for ${snap.id} ` +
-        `-- retryCount (${retryCount}) -- waitTime(${waitTime})`
+      `callWithRetry(): About to retry for ${snap.id} ` +
+        `-- retryCount (${retryCount}) -- waitTime(${waitTimeMillis})`
     );
     return callWithRetry(fn, snap, retryCount + 1);
   }

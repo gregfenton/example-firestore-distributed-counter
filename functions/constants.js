@@ -4,8 +4,9 @@ export const DISTRIBUTED_COLLECTION_NAME = 'distributed';
 export const DISTRIBUTED_COUNTER_COUNT_PROPERTY = 'count';
 export const DISTRIBUTED_COUNTER_NAME = 'distCount';
 export const DISTRIBUTED_COUNT_INCREASE = 1;
-export const DISTRIBUTED_NUMBER_OF_SHARDS = 10;
+export const DISTRIBUTED_NUMBER_OF_SHARDS = 50;
 export const DISTRIBUTED_SHARDS_COLLECTION_NAME = 'shards';
+export const DISTRIBUTED_MAX_RETRIES = 20;
 
 export const DOCUMENT_BATCH_DATE_PROPERTY = 'batchDate';
 export const DOCUMENT_DATA_PROPERTY = 'data';
