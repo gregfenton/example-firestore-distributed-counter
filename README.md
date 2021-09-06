@@ -29,6 +29,8 @@ showing how to build Firestore "distributed counters" that dramatically decrease
 creating large numbers of documents in a short period of time.  There is also a [Firestore Extension for distributed
 counters](https://firebase.google.com/products/extensions/firestore-counter/).
 
+
+HOWEVER, I failed to get the distributed counters working without failures.  I was able to get the number of failures to a small number when generating 300 documents in parallel
 # This Project
 
 This project's code works with two Firestore collections:  `traditional` and `distributed`.  In both collections
@@ -63,10 +65,16 @@ in the configuration, you can get dramatic throughput for concurrency and avoid 
 **fsDistributedOnCreate** (`functions/fs/distributed/onCreate.f.js`)
 > a FS trigger CF that runs when a new document is created in the FS collection named `distributed`
 
+**fsDistPubSubOnCreate** (`functions/fs/distPubSub/onCreate.f.js`)
+> a FS trigger CF that runs when a new document is created in the FS collection named `distributed`
+
 **httpBatchCreateTraditional** (`functions/http/batchCreateTraditional.f.js`)
 > an HTTP CF that, given a parameter for the _batchSize_, creates that number of documents in the `traditional` FS collection
 
 **httpBatchCreateDistributed** (`functions/http/batchCreateDistributed.f.js`)
+> an HTTP CF that, given a parameter for the _batchSize_, creates that number of documents in the `distributed` FS collection
+
+**httpBatchCreateDistPubSub** (`functions/http/batchCreateDistPubSub.f.js`)
 > an HTTP CF that, given a parameter for the _batchSize_, creates that number of documents in the `distributed` FS collection
 
 # Running The Example
@@ -93,13 +101,28 @@ line parameter, then running the debugger in VSCode.
 
 ## Running in your cloud-based Firebase project
 
-1. deploy to your cloud project with `firebase deploy --only functions,firestore`
-1. enable unauthenticated access to `httpBatchCreateTraditional` by following [these After Deployment instructions](https://cloud.google.com/functions/docs/securing/managing-access-iam#after_deployment)
+### Deploying to Firebase
+1. ensure you are using the correct project `firebase use <PROJECT_NAME>`
+1. deploy to your cloud project with `deploy --only functions,firestore,pubsub`
+
+### Enable unauthorized execution of the HTTP functions
+
+To enable unauthenticated access to the HTTP functions, we used [these instructions](https://cloud.google.com/functions/docs/securing/managing-access-iam#after_deployment), but you can use the following commands instead:
+
+1. `gcloud config set project <PROJECT_NAME>`
+1. `gcloud functions add-iam-policy-binding httpBatchCreateTraditional --member="allUsers" --role="roles/cloudfunctions.invoker"`
+1. `gcloud functions add-iam-policy-binding httpBatchCreateDistributed --member="allUsers" --role="roles/cloudfunctions.invoker"`
+1. `gcloud functions add-iam-policy-binding httpBatchCreateDistPubSub --member="allUsers" --role="roles/cloudfunctions.invoker"`
+
+### Deploying & running
 1. cause the system to load a batch of `traditional` docs (you can get the URL for the HTTP function from Firebase Console >> Functions):
    `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" https://YOUR_FIREBASE_PROJECT.cloudfunctions.net/httpBatchCreateTraditional`
 1. Re-run the above URL changing the `batchSize` parameter.
 1. cause the system to load a batch of `distributed` docs:
    `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" http://YOUR_FIREBASE_PROJECT.cloudfunctions.net/httpBatchCreateDistributed`
+1. Re-run the above URL changing the `batchSize` parameter.
+1. cause the system to load a batch of `distPubSub` docs:
+   `wget -Sv -Ooutput.txt --method=POST --body-data="batchSize=10" http://YOUR_FIREBASE_PROJECT.cloudfunctions.net/httpBatchCreateDistPubSub`
 1. Re-run the above URL changing the `batchSize` parameter.
 
 # To reset the system
@@ -107,6 +130,7 @@ line parameter, then running the debugger in VSCode.
 1. delete the `counters` collection
 1. delete the `traditional` collection
 1. delete the `distributed` collection
+1. delete the `distPubSub` collection
 
 # Analysis
 

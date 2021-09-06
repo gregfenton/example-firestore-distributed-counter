@@ -4,14 +4,24 @@ export const DISTRIBUTED_COLLECTION_NAME = 'distributed';
 export const DISTRIBUTED_COUNTER_COUNT_PROPERTY = 'count';
 export const DISTRIBUTED_COUNTER_NAME = 'distCount';
 export const DISTRIBUTED_COUNT_INCREASE = 1;
+export const DISTRIBUTED_MAX_RETRIES = 20;
 export const DISTRIBUTED_NUMBER_OF_SHARDS = 50;
 export const DISTRIBUTED_SHARDS_COLLECTION_NAME = 'shards';
-export const DISTRIBUTED_MAX_RETRIES = 20;
+
+export const DISTPUBSUB_COLLECTION_NAME = 'distPubSub';
+export const DISTPUBSUB_COUNTER_COUNT_PROPERTY = 'count';
+export const DISTPUBSUB_COUNTER_NAME = 'distPubSubCount';
+export const DISTPUBSUB_COUNT_INCREASE = DISTRIBUTED_COUNT_INCREASE;
+export const DISTPUBSUB_MAX_RETRIES = DISTRIBUTED_MAX_RETRIES;
+export const DISTPUBSUB_NUMBER_OF_SHARDS = DISTRIBUTED_NUMBER_OF_SHARDS;
+export const DISTPUBSUB_SHARDS_COLLECTION_NAME = 'shards';
+export const DISTPUBSUB_TOPIC = 'distPubSub_topic';
+export const DISTPUBSUB_TOPIC_SUBSCRIPTION = 'distPubSub_topic_sub';
 
 export const DOCUMENT_BATCH_DATE_PROPERTY = 'batchDate';
 export const DOCUMENT_DATA_PROPERTY = 'data';
-export const DOCUMENT_LOOP_INDEX_PROPERTY = 'loopIndex';
 export const DOCUMENT_DOC_NUMBER_SET_PROPERTY = 'docNumberSet';
+export const DOCUMENT_LOOP_INDEX_PROPERTY = 'loopIndex';
 export const DOCUMENT_NUM_PROPERTY = 'docNumber';
 
 export const REQ_BODY_BATCHSIZE = 'batchSize';
@@ -55,7 +65,7 @@ export const createDoc = async (
     [DOCUMENT_LOOP_INDEX_PROPERTY]: loopNum,
     [DOCUMENT_BATCH_DATE_PROPERTY]: startTimeMillis,
     // enables us to find docs without a docNumber set
-    [DOCUMENT_DOC_NUMBER_SET_PROPERTY]: false
+    [DOCUMENT_DOC_NUMBER_SET_PROPERTY]: false,
   });
 };
 
@@ -69,7 +79,10 @@ export const createBatchOfDocs = async (collectionName, req, res, admin) => {
     console.error(err);
     res.status(400).send(err);
   }
-  console.log(`batch size: (${batchParam})`);
+  console.log(
+    'createBatchOfDocs(): ' +
+      `batch size: (${batchParam}) -- collection(${collectionName})`
+  );
 
   const msg = {};
   const fsDB = admin.firestore();

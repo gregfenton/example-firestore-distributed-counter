@@ -11,7 +11,7 @@ const runtimeOpts = {
 export default functions
   .runWith(runtimeOpts)
   .https.onRequest(async (req, res) => {
-    CONSTS.createBatchOfDocs(
+    return CONSTS.createBatchOfDocs(
       CONSTS.DISTRIBUTED_COLLECTION_NAME,
       req,
       res,

@@ -11,8 +11,9 @@ const runtimeOpts = {
 export default functions
   .runWith(runtimeOpts)
   .https.onRequest(async (req, res) => {
+    console.log('httpBatchCreateDistPubSub started');
     return CONSTS.createBatchOfDocs(
-      CONSTS.TRADITIONAL_COLLECTION_NAME,
+      CONSTS.DISTPUBSUB_COLLECTION_NAME,
       req,
       res,
       admin
