@@ -122,11 +122,13 @@ export default functions
           console.log(
             `PUBSUB SUCCESS - docId(${docRef.id}) :: docNumber(${docNumber})`
           );
+          return true;
         })
         .catch((ex) => {
           console.error(
             `PUBSUB FAILURE FOR docId(${docRef.id}) - ${ex.message}`
           );
+          throw ex; // indicate that we failed to process
         });
     });
   });
